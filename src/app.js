@@ -4,101 +4,127 @@ app.listen(7777,()=>{
     console.log('app is running on port 7777')
 })
 
-
-app.get('/user',(req,res)=>{
-    res.send([
-        {name:'/user/id'}
-    ])
-})
-app.get('/user/id',(req,res)=>{
-    
-    res.send([
-        {name:'/user/id'}
-    ])
+app.get('/user',(req,res,next)=>{
+    console.log('middleware 1');
+    next();
 })
 
-app.post('/user',(req,res)=>{
-    res.send('updated succesfully')
+app.get('/user',(req,res,next)=>{
+    console.log('middleware 2');
+    next();
+},(req,res,next)=>{
+    console.log('middleware 3');
+    next();
+},(req,res,next)=>{
+    console.log('middleware 4');
+    next();
+},(req,res,next)=>{
+    console.log('route handler');
+    res.send('success')
 })
-app.delete('/user',(req,res)=>{
-    res.send('deleted succesfully')
-})
 
-
-
-
-//app.get checks for exact match of rouat
 /*
-
-✅ How app.get() matching works
-app.get('/hello', (req, res) => {
-  res.send('hello')
+✅ Execution order (step by step)
+1️⃣ First route
+app.get('/user', (req, res, next) => {
+    console.log('middleware 1');
+    next();
 })
 
 
-This will match:
+Output:
 
-/hello ✅
-
-But will NOT match:
-
-/hello/world ❌
-
-/hello/anything ❌
-
-So in normal usage, app.get() is an exact match.
-
-⚠️ Important clarification (trailing slash)
-
-Express is flexible with trailing slashes:
-
-app.get('/hello', ...)
+middleware 1
 
 
-Matches:
+Since next() is called → Express moves to the next matching route.
 
-/hello ✅
-
-/hello/ ✅
-
-
-
-
-
-🔁 Compare with app.use()
-app.use('/hello', (req, res) => {
-  res.send('hello')
-})
+2️⃣ Second route (multiple middleware in one route)
+app.get('/user',
+  (req,res,next)=>{ console.log('middleware 2'); next(); },
+  (req,res,next)=>{ console.log('middleware 3'); next(); },
+  (req,res,next)=>{ console.log('middleware 4'); next(); },
+  (req,res,next)=>{ 
+      console.log('route handler');
+      res.send('success')
+  }
+)
 
 
-This matches:
+Output:
 
-/hello ✅
-
-/hello/world ✅
-
-/hello/abc/xyz ✅
-
-👉 app.use() is prefix-based, not exact.
-
-🧠 Summary table
-Method	Matching behavior
-app.get('/route')	Exact match (except trailing slash)
-app.use('/route')	Matches all paths starting with /route
-app.get('/')	Only /
-app.use('/')	Matches everything
-🟢 Best practice
-
-Use app.get, app.post, etc. for routes
-
-Use app.use for middleware
-
-Example (recommended)
-app.get('/', (req, res) => res.send('home'))
-app.get('/hello', (req, res) => res.send('hello'))
-app.use('/admin', adminMiddleware)
+middleware 2
+middleware 3
+middleware 4
+route handler
 
 
+res.send() ends the request-response cycle.
+
+🧾 Final console output (in order)
+middleware 1
+middleware 2
+middleware 3
+middleware 4
+route handler
+
+
+And the browser receives:
+
+success
+
+🧠 Key concepts this demonstrates
+✅ 1. Express allows multiple handlers for the same route
+
+As long as:
+
+Path matches
+
+Method matches
+
+next() is called
+
+✅ 2. next() is the key
+
+next() → move forward
+
+No next() and no res.send() → request hangs ❌
+
+res.send() → ends chain
+
+✅ 3. Route handlers are just middleware
+
+There’s no real difference except:
+
+Middleware usually calls next()
+
+Final handler sends response
+
+⚠️ Important warning
+
+If you accidentally do this:
+
+res.send('success');
+next(); // ❌ ERROR
+
+
+You’ll get:
+
+Error: Cannot set headers after they are sent
+
+✅ Best practice version
+
+Usually written like this for clarity:
+
+app.get(
+  '/user',
+  middleware1,
+  middleware2,
+  middleware3,
+  (req, res) => {
+    res.send('success');
+  }
+);
 
 
 */
