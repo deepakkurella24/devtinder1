@@ -3,21 +3,102 @@ const app=express()
 app.listen(7777,()=>{
     console.log('app is running on port 7777')
 })
-app.use('/hello/world',(req,res)=>{
-    res.send('hello world')
-})
-app.use('/hello',(req,res)=>{
-    res.send('hello')
-})
 
-app.use('/test',(req,res)=>{
-    res.send('sfew')
-})
 
-app.use('/',(req,res)=>{
+app.get('/user',(req,res)=>{
     res.send([
-        {name:'india'},
-        {name:'deepak'}
-
+        {name:'/user/id'}
     ])
 })
+app.get('/user/id',(req,res)=>{
+    
+    res.send([
+        {name:'/user/id'}
+    ])
+})
+
+app.post('/user',(req,res)=>{
+    res.send('updated succesfully')
+})
+app.delete('/user',(req,res)=>{
+    res.send('deleted succesfully')
+})
+
+
+
+
+//app.get checks for exact match of rouat
+/*
+
+✅ How app.get() matching works
+app.get('/hello', (req, res) => {
+  res.send('hello')
+})
+
+
+This will match:
+
+/hello ✅
+
+But will NOT match:
+
+/hello/world ❌
+
+/hello/anything ❌
+
+So in normal usage, app.get() is an exact match.
+
+⚠️ Important clarification (trailing slash)
+
+Express is flexible with trailing slashes:
+
+app.get('/hello', ...)
+
+
+Matches:
+
+/hello ✅
+
+/hello/ ✅
+
+
+
+
+
+🔁 Compare with app.use()
+app.use('/hello', (req, res) => {
+  res.send('hello')
+})
+
+
+This matches:
+
+/hello ✅
+
+/hello/world ✅
+
+/hello/abc/xyz ✅
+
+👉 app.use() is prefix-based, not exact.
+
+🧠 Summary table
+Method	Matching behavior
+app.get('/route')	Exact match (except trailing slash)
+app.use('/route')	Matches all paths starting with /route
+app.get('/')	Only /
+app.use('/')	Matches everything
+🟢 Best practice
+
+Use app.get, app.post, etc. for routes
+
+Use app.use for middleware
+
+Example (recommended)
+app.get('/', (req, res) => res.send('home'))
+app.get('/hello', (req, res) => res.send('hello'))
+app.use('/admin', adminMiddleware)
+
+
+
+
+*/
