@@ -205,4 +205,579 @@ app.get(
   }
 );
 
+===============================schema validation===============================
+1. required
 
+Ensures a field is present.
+
+name: {
+  type: String,
+  required: true
+}
+
+
+You can also use a custom message:
+
+required: [true, 'Name is required']
+
+2. min / max (Numbers)
+
+Restricts numeric values.
+
+age: {
+  type: Number,
+  min: 18,
+  max: 65
+}
+
+
+With messages:
+
+min: [18, 'Too young']
+
+3. enum
+
+Restricts a field to a fixed set of values.
+
+status: {
+  type: String,
+  enum: ['active', 'inactive', 'pending']
+}
+
+
+With message:
+
+enum: {
+  values: ['admin', 'user'],
+  message: '{VALUE} is not a valid role'
+}
+
+4. match (Regex)
+
+Validates strings using regular expressions.
+
+email: {
+  type: String,
+  match: /.+\@.+\..+/
+}
+
+5. minlength / maxlength (Strings)
+
+Controls string length.
+
+username: {
+  type: String,
+  minlength: 3,
+  maxlength: 20
+}
+
+6. unique ⚠️ (Index, not true validation)
+
+Ensures uniqueness at the database level, not during validation.
+
+email: {
+  type: String,
+  unique: true
+}
+
+
+Important:
+unique creates a MongoDB index—it does not behave like other validators and won’t trigger validate() errors.
+
+7. validate (Custom Validator)
+
+For anything beyond the basics.
+
+password: {
+  type: String,
+  validate: {
+    validator: v => v.length >= 8,
+    message: 'Password must be at least 8 characters'
+  }
+}
+
+
+Async validator example:
+
+validate: {
+  validator: async function (value) {
+    return await isAvailable(value);
+  },
+  message: 'Value not available'
+}
+
+8. immutable
+
+Prevents a field from being changed after creation.
+
+createdAt: {
+  type: Date,
+  default: Date.now,
+  immutable: true
+}
+
+9. default (Not a validator, but commonly paired)
+
+Sets a value if none is provided.
+
+role: {
+  type: String,
+  default: 'user'
+}
+
+Quick Example Schema
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    match: /.+\@.+\..+/
+  },
+  age: { type: Number, min: 18 },
+  role: { type: String, enum: ['admin', 'user'] }
+});
+
+
+
+
+
+======================Most useful Mongoose Model methods=======================
+1️⃣ find()
+
+👉 Get multiple documents
+
+const users = await User.find();
+const users = await User.find({ isActive: true });
+
+2️⃣ findOne() ⭐ (VERY common)
+
+👉 Get one document
+
+const user = await User.findOne({ email });
+
+
+Used in:
+
+login
+
+signup checks
+
+3️⃣ findById()
+
+👉 Find by _id
+
+const user = await User.findById(id);
+
+4️⃣ create()
+
+👉 Create + save in one step
+
+const user = await User.create({
+  name: "John",
+  email: "john@gmail.com"
+});
+
+
+Same as:
+
+const user = new User(data);
+await user.save();
+
+5️⃣ updateOne()
+
+👉 Update first matching document
+
+await User.updateOne(
+  { email },
+  { $set: { password: hashedPassword } }
+);
+
+6️⃣ findByIdAndUpdate()
+
+👉 Find + update by ID
+
+await User.findByIdAndUpdate(id, { name: "Alex" });
+
+7️⃣ deleteOne()
+
+👉 Delete one document
+
+await User.deleteOne({ email });
+
+8️⃣ findByIdAndDelete()
+
+👉 Delete by ID
+
+await User.findByIdAndDelete(id);
+
+🔹 Useful query helpers (very practical)
+.select()
+
+👉 Choose fields
+
+User.find().select("firstName email");
+
+
+Exclude password (important 🔐):
+
+User.findOne({ email }).select("-password");
+
+.limit() & .skip()
+
+👉 Pagination
+
+User.find().limit(10).skip(20);
+
+.sort()
+
+👉 Sorting
+
+User.find().sort({ createdAt: -1 });
+
+🔹 Document methods (after fetch)
+.save()
+user.name = "Updated";
+await user.save();
+
+🔹 Bonus (Auth-related ⭐)
+.exists()
+
+👉 Check existence (faster than findOne)
+
+const exists = await User.exists({ email });
+
+
+
+
+
+===================== update db data=====================
+Basic syntax
+Model.findOneAndUpdate(filter, update, options)
+
+Most important options (you’ll actually use these)
+1️⃣ new ⭐ (MOST USED)
+{ new: true }
+
+
+false (default) → returns old document
+
+true → returns updated document
+
+const user = await User.findOneAndUpdate(
+  { email },
+  { firstName: "John" },
+  { new: true }
+);
+
+2️⃣ upsert
+{ upsert: true }
+
+
+If document exists → update it
+
+If document does NOT exist → create new one
+
+await User.findOneAndUpdate(
+  { email },
+  { firstName: "John" },
+  { upsert: true }
+);
+
+3️⃣ runValidators ⭐
+{ runValidators: true }
+
+
+Ensures schema validation runs on update
+
+Without this, validation is skipped ❌
+
+await User.findOneAndUpdate(
+  { email },
+  { email: "bad-email" },
+  { runValidators: true }
+);
+
+4️⃣ select
+{ select: "-password" }
+
+
+Controls returned fields
+
+await User.findOneAndUpdate(
+  { email },
+  { lastName: "Doe" },
+  { new: true, select: "-password" }
+);
+
+5️⃣ context
+{ context: "query" }
+
+
+Required for some validators to work properly
+
+Often used with runValidators
+
+Less common but useful options
+6️⃣ lean
+{ lean: true }
+
+
+Returns plain JS object
+
+Faster, no Mongoose document methods
+
+7️⃣ timestamps
+{ timestamps: false }
+
+
+Disable automatic updatedAt
+
+Complete example (real-world)
+const user = await User.findOneAndUpdate(
+  { email },
+  { $set: { lastName: "Doe" } },
+  {
+    new: true,
+    runValidators: true,
+    select: "-password"
+  }
+);
+
+⚠️ Common mistakes
+
+❌ Forgetting new: true
+❌ Forgetting runValidators: true
+❌ Expecting password field when it’s excluded
+
+One-line takeaway 🧠
+
+Always use { new: true, runValidators: true } unless you have a reason not to.
+
+If you want next, I can:
+
+compare updateOne vs findOneAndUpdate
+
+explain MongoDB update operators ($set, $inc)
+
+show safe password update flow
+
+{ $set: { lastName: "Doe" } }
+ $set what is it
+
+Great question — this is core MongoDB knowledge 👍
+Let’s keep it simple and crystal clear.
+
+What is $set?
+
+$set is a MongoDB update operator.
+
+It tells MongoDB:
+“Update ONLY these fields, leave everything else unchanged.”
+
+Why $set exists
+
+Without $set ❌:
+
+User.findOneAndUpdate(
+  { email },
+  { lastName: "Doe" }
+);
+
+
+⚠️ This replaces the entire document (dangerous).
+
+With $set ✅:
+
+User.findOneAndUpdate(
+  { email },
+  { $set: { lastName: "Doe" } }
+);
+
+
+✔ Only lastName is updated
+✔ All other fields stay the same
+
+Simple example
+Original document
+{
+  "firstName": "John",
+  "lastName": "Smith",
+  "email": "john@gmail.com"
+}
+
+Update with $set
+{ $set: { lastName: "Doe" } }
+
+Result
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john@gmail.com"
+}
+
+Common MongoDB update operators (you’ll use these)
+Operator	Purpose
+$set	Update specific fields
+$inc	Increment a number
+$push	Add item to array
+$pull	Remove item from array
+$unset	Remove a field
+Example with multiple fields
+{
+  $set: {
+    firstName: "John",
+    lastName: "Doe"
+  }
+}
+
+One-line takeaway 🧠
+
+$set safely updates specific fields without touching the rest of the document.
+
+Once you understand $set, MongoDB updates stop being scary 😄
+If you want, I can explain $inc, $push, or $unset next.
+
+Operator	Purpose
+$set	Update specific fields
+$inc	Increment a number
+$push	Add item to array
+$pull	Remove item from array
+$unset	Remove a field
+
+Perfect 👍 — that table is correct.
+Let me lock it in by giving you tiny, real examples for each so it sticks.
+
+MongoDB Update Operators (with examples)
+🔹 $set — Update specific fields
+{ $set: { lastName: "Doe" } }
+
+
+✔ Updates only lastName
+
+🔹 $inc — Increment a number
+{ $inc: { loginCount: 1 } }
+
+
+✔ Adds +1 to loginCount
+
+🔹 $push — Add item to array
+{ $push: { roles: "admin" } }
+
+
+✔ Adds "admin" to roles array
+
+🔹 $pull — Remove item from array
+{ $pull: { roles: "admin" } }
+
+
+✔ Removes "admin" from roles array
+
+🔹 $unset — Remove a field
+{ $unset: { tempToken: "" } }
+
+
+✔ Deletes tempToken field entirely
+
+🔐 Real auth-related examples (useful)
+// count logins
+{ $inc: { loginCount: 1 } }
+
+// store last login time
+{ $set: { lastLogin: new Date() } }
+
+// remove reset token after use
+{ $unset: { resetToken: "" } }
+
+One-line memory trick 🧠
+
+set → change value
+
+inc → increase
+
+push → add to array
+
+pull → remove from array
+
+unset → delete field
+
+
+
+
+
+
+
+==============timestamps for schema===============
+In Mongoose, timestamps are a super handy feature that automatically track when a document is created and updated. Simple and powerful 👌
+
+✅ What timestamps do
+
+When enabled, Mongoose automatically adds two fields:
+
+createdAt  → when document is created
+updatedAt  → when document is last updated
+
+
+You do not need to manage these yourself.
+
+📌 How to enable timestamps in a schema
+const userSchema = new mongoose.Schema(
+  {
+    firstName: String,
+    email: String,
+    password: String
+  },
+  {
+    timestamps: true
+  }
+);
+
+
+That’s it ✅
+
+📄 Example document
+{
+  "_id": "...",
+  "firstName": "John",
+  "email": "john@gmail.com",
+  "password": "hashed...",
+  "createdAt": "2026-01-24T10:15:30.000Z",
+  "updatedAt": "2026-01-24T10:15:30.000Z"
+}
+
+🔄 What updates updatedAt
+
+Any of these will update updatedAt automatically:
+
+save()
+
+updateOne()
+
+findOneAndUpdate()
+
+findByIdAndUpdate()
+
+⚙️ Custom timestamp field names (optional)
+timestamps: {
+  createdAt: "created_at",
+  updatedAt: "updated_at"
+}
+
+❌ Disable timestamp update for a specific query
+User.updateOne(
+  { _id },
+  { $set: { name: "Alex" } },
+  { timestamps: false }
+);
+
+🧠 When to use timestamps
+
+User accounts
+
+Auth logs
+
+Orders
+
+Posts / comments
+
+Almost every production schema
