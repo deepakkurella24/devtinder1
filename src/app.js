@@ -1,88 +1,149 @@
 const express=require('express')
 const {connectDB}=require('./config/database')
-const User=require('./models/user')
-const bcrypt = require('bcrypt');
-const validater=require('validator')
-const jwt = require('jsonwebtoken');
+const cors = require('cors')
 const cookieParser=require("cookie-parser")
 const userAuth=require("./middlewares/userAuth")
+const User=require('./models/user')
+const Request=require('./models/requests')
+const authRoute=require('./routes/authRouter')
+const profileRoute=require('./routes/profileRouter')
+const requestRoute=require('./routes/requestRouter')
+const userRoute=require('./routes/userRouter')
+const projectRoute=require('./routes/projectRouter')
+const chatRoute=require('./routes/chatRouter');
 const app=express();
-function validatePassword(value){
-    if(!validater.isStrongPassword(value)){
-        throw new Error('invalid password')
-    }
-}
+const http = require("http");
+const initSocket = require("./config/socket");
+
+const server = http.createServer(app);
+
+
+
+app.use(cors({
+  origin: "http://localhost:5173",//allow this frontend
+  credentials: true               //takes the jwt from above frontend
+}));
+
+//network
+// app.use(cors({
+//   origin: [
+//     "http://localhost:5173",
+//     "http://192.168.137.1:5173"  
+//   ],
+//   credentials: true
+// }));
+
+
 app.use(express.json())
 app.use(cookieParser())
 
 
 
+app.use(authRoute)
+app.use(userAuth)
 
-app.post('/signUp',async (req,res)=>{
-    try{
+app.get('/auth/check',(req,res)=>{
+    const {
+        _id,
+        name,
+        goal,
+        profileURL,
+        wanted = [],
+        offered = [],
+        about = "",
+        role=''
         
-        const userData=await User.exists({email:req.body.email})
-        
-        
-        if(userData){
-            //console.log('email already used')
-            throw new Error('email already used')
+    } = req.user;
+
+    res.json({isLoggedIn:true,data:{_id,name,profileURL,goal,about,wanted,offered,role}})
+})
+
+
+
+app.get('/view/:id', async (req, res) => {
+  try {
+    const user = req.user;
+    const reqUserId = req.params.id;
+
+    const reqUser = await User.findById(reqUserId);
+    if (!reqUser) throw new Error("user not found");
+
+    const {
+      name,
+      goal,
+      profileURL,
+      wanted = [],
+      offered = [],
+      about = "",
+      role = '',
+      _id
+    } = reqUser;
+
+    let status = 'none';
+    let reqId;
+
+    const request = await Request.findOne({
+      $or: [
+        { toUserId: reqUserId, fromUserId: user._id },
+        { toUserId: user._id, fromUserId: reqUserId }
+      ]
+    });
+
+    if (request) {
+      if (request.status === 'pending') {
+        if (request.fromUserId.toString() === user._id.toString()) {
+          status = 'sent';
+        } else {
+          status = 'received';
+          reqId = request._id;
         }
-        const {email,firstName,lastName,password}=req.body
-        validatePassword(password)
-        const hashPassword=await bcrypt.hash(password, 10);
-       
-        const user=new User({firstName,lastName,email,password:hashPassword})
-        
-        await user.save();
-        //console.log(userData);
-        console.log('user added successfully')
-        res.send('added succesfully')
+      } else if (request.status === 'accepted') {
+        status = 'accepted';
+      }
+    }
+
+    res.json({
+      data: { _id, role, name, goal, profileURL, wanted, offered, about, status, reqId }
+    });
+
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+app.use(profileRoute)
+app.use(requestRoute)
+app.use(userRoute)
+app.use(projectRoute)
+app.use(chatRoute);
+
+
+
+
+// connectDB().then((res)=>{
+//     console.log('DB connected succesfully')
+//     app.listen(7777,()=>{
+//         console.log('app is running on port 7777')
+//     })
+    // app.listen(7777, "0.0.0.0", () => {
+    // console.log("Server running on network");
+    // });
+// }).catch((err)=>console.log(err))
+
+connectDB()
+  .then(() => {
+    console.log("DB connected successfully");
+
     
-    }catch(err){
-        res.status(401).send(err.message)
-    }
-})
+    initSocket(server);
 
-app.post('/logIn',async (req,res)=>{
-    try{
-        const {email,password}=req.body;
-        // console.log(_id)
-        const user=await User.findOne({email})
-        if(!user)  throw new Error('invalid user')
-        const bool=await user.validatePasswordFromDB(password)
-        if(!bool) throw new Error('incorrect password')
-        const jwtToken=await user.getJWT()
-        res.cookie('token',jwtToken)
-        res.send({firstName:user.firstName,lastName:user.lastName});
-
-    }catch(err){
-        res.status(401).send(err.message)
-    }
-})
-
-app.use('/',userAuth)
-
-app.get("/",async(req,res)=>{
-    try{
-
-        res.send(req.body)
-    }catch(err){
-        res.status(401).send(err.message)
-    }
-})
-
-
-
-
-connectDB().then((res)=>{
-    console.log('DB connected succesfully')
-    app.listen(7777,()=>{
-        console.log('app is running on port 7777')
-    })
-}).catch((err)=>console.log(err))
-
-
+    server.listen(7777, () => {
+      console.log("app is running on port 7777");
+    });
+    // server.listen(7777, "0.0.0.0",() => {
+    //   console.log("app is running on port 7777");
+    // });
+  })
+  .catch((err) => console.log(err));
 
 
 

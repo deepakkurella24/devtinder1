@@ -3,19 +3,15 @@ const validater=require('validator')
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const userSchema=new mongoose.Schema({
-    firstName:{
+    name:{
         type:String,
         trim:true,
         minlength: 3,
-        maxlength: 20,
+        maxlength: 30,
         required: [true, 'FirstName is required'],
         
     },
-    lastName: {
-        type:String,
-        maxlength: 20,
-        trim:true
-    },
+
     email: {
         type:String,
         required: [true, 'email is required'],
@@ -27,12 +23,49 @@ const userSchema=new mongoose.Schema({
                 throw new Error('invalid email')
             }
         }
-        
     },
     password: {
         type:String,
         required: [true, 'password is required'],
     },
+
+    profileURL:{
+        type:String,
+        default:"https://geographyandyou.com/images/user-profile.png",
+        validate(value){
+            if(!validater.isURL(value)){
+                throw new Error('invalid url')
+            }
+        }
+    },
+    about:{
+        type:String,
+        trim:true,
+        minlength:10,
+        maxlength:150,
+        // required: [true, 'about is required'],
+    },
+    offered:{
+        type:[String],
+       
+    },
+    wanted:{
+        type:[String]
+    },
+    goal:{
+        type:String,
+        trim:true,
+        minlength:5,
+        maxlength:80,
+        trim:true,
+        default:"To gain practical knowledge and apply this skill in real-world projects"
+    },
+    role:{
+        type:String,
+        trim:true,
+        minlength:3,
+        maxlength:30
+    }
 },  
 {
     timestamps: true
@@ -56,4 +89,4 @@ module.exports=mongoose.model('User',userSchema)
 //     lastName:'kurella',
 //     email:'deepak.kurella24@sasi.ac.in',
 //     password:'helloworld@123'
-// }
+// } age,gender,profileUrl,about,skills
