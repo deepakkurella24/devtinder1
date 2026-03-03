@@ -1,7 +1,7 @@
 const express=require('express');
 const Request=require('../models/requests')
 const User=require('../models/user');
-const { Connection } = require('mongoose');
+const Conversation=require('../models/conversation')
 const route=express.Router();
 
 // route.get('/user/requests',async(req,res)=>{
@@ -92,26 +92,44 @@ route.get('/user/sent',async(req,res)=>{
     }
 })
 
-route.get('/user/connections',async(req,res)=>{
-    try{
-        const user=req.user;
-        const connections=await Request.find({
-            $or: [
-                { toUserId:user._id,status:'accepted' },
-                { fromUserId:user._id,status:'accepted' }
-            ]
-        }).populate('fromUserId',[ 'name','profileURL','role','wanted','offered' ]).populate('toUserId',[ 'name','profileURL','role','wanted','offered' ]);
-        const resData=connections.map((con)=>{
-            if(user._id.toString()===con.toUserId._id.toString()) return con.fromUserId;
-            else return con.toUserId;
-        })
-        res.json({status:"succsess",data:resData})
-    }
-    catch(err){
-        res.status(400).send(err.message)
-    }
-})
+route.get('/user/connections' , async (req, res) => { // Added router and userAuth
+  try {
+    const user = req.user;
+    const connections = await Request.find({
+      $or: [
+        { toUserId: user._id, status: 'accepted' },
+        { fromUserId: user._id, status: 'accepted' }
+      ]
+    })
+    .populate('fromUserId', ['name', 'profileURL', 'role', 'wanted', 'offered'])
+    .populate('toUserId', ['name', 'profileURL', 'role', 'wanted', 'offered']);
 
+    // FIXED: Wrapped in await Promise.all()
+    const resData = await Promise.all(connections.map(async (con) => {
+      if (user._id.toString() === con.toUserId._id.toString()) {
+        const conversation = await Conversation.findOne({
+          members: { $all: [user._id, con.fromUserId._id] },
+          isGroup: false
+        });
+        // FIXED: Spreading ._doc to avoid Mongoose metadata
+        return { conversationId: conversation?._id, ...con.fromUserId._doc }; 
+      } else {
+        // FIXED: Querying against toUserId instead of fromUserId
+        const conversation = await Conversation.findOne({
+          members: { $all: [user._id, con.toUserId._id] }, 
+          isGroup: false
+        });
+        // FIXED: Spreading ._doc
+        return { conversationId: conversation?._id, ...con.toUserId._doc };
+      }
+    }));
+
+    // FIXED: Typo in "success"
+    res.json({ status: "success", data: resData }); 
+  } catch (err) {
+    res.status(400).send(err.message);
+  }
+});
 route.get('/user/feed',async(req,res)=>{
     try{
         const user=req.user;

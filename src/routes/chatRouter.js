@@ -2,9 +2,11 @@ const express = require("express");
 const router = express.Router();
 const Conversation = require("../models/conversation");
 const Message = require("../models/message");
+const User = require("../models/user"); 
 const userAuth = require("../middlewares/userAuth");
-
 const mongoose = require("mongoose");
+
+
 
 router.get('/chat/details/:conversationId', userAuth, async (req, res) => {
   try {
@@ -122,8 +124,9 @@ router.post('/chat/create-group', userAuth, async (req, res) => {
   }
 });
 
-router.put('/chat/group/:conversationId/edit', userAuth, async (req, res) => {
+router.post('/chat/group/:conversationId/edit', userAuth, async (req, res) => {
   try {
+    console.log('hello');
     const conversationId = req.params.conversationId;
     const currentUserId = req.user._id.toString();
     const { name, members } = req.body; 
@@ -138,8 +141,8 @@ router.put('/chat/group/:conversationId/edit', userAuth, async (req, res) => {
     if (!group || !group.isGroup) {
       return res.status(404).send("Group not found.");
     }
-
-    const currentMemberStrings = group.members.map(id => id.toString());
+    console.log(group.members);
+    const currentMemberStrings = group.members.map(id => id.toString()||'');
     if (!currentMemberStrings.includes(currentUserId)) {
       return res.status(403).send("You must be a member of this group to edit it.");
     }
@@ -301,15 +304,15 @@ router.get("/chat/:id", userAuth, async (req, res) => {
       }
 
      
-      // conversation = await Conversation.findOne({
-      //   members: { $all: [user._id, targetId] },
-      //   isGroup: false
-      // });
       conversation = await Conversation.findOne({
-
-        members: { $all: [user._id, targetId] }
-
+        members: { $all: [user._id, targetId] },
+        isGroup: false
       });
+      // conversation = await Conversation.findOne({
+
+      //   members: { $all: [user._id, targetId] }
+
+      // });
 
     
       if (!conversation) {

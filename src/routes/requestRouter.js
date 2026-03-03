@@ -3,7 +3,7 @@ const router = express.Router();
 const Request=require('../models/requests')
 const User=require('../models/user')
 const mongoose=require('mongoose') 
-
+const Conversation=require('../models/conversation')
 router.post('/request/cancel/:userId',async(req,res)=>{
     try{
         const user=req.user;
@@ -119,22 +119,32 @@ router.post('/request/remove/:userId', async (req, res) => {
 
 
 
-router.post('/request/review/:status/:requestId',async(req,res)=>{
-    try{
-        const {requestId,status}=req.params;
-        const user=req.user;
-        if (!mongoose.Types.ObjectId.isValid(requestId)) throw new Error('invalid request id');
-        if(!['accepted','rejected'].includes(status)) throw new Error("invalid status");
-        const request=await Request.findOne({_id:requestId,toUserId:user._id ,status:'pending'});
-        if(!request) throw new Error("invalid request");
-        request.status=status
-        const updatedRequest=await request.save()
-        res.json({message:"request successful",data:updatedRequest})
+router.post('/request/review/:status/:requestId' , async (req, res) => { // Added userAuth
+  try {
+    const { requestId, status } = req.params;
+    const user = req.user;
+    
+    if (!mongoose.Types.ObjectId.isValid(requestId)) throw new Error('invalid request id');
+    if (!['accepted', 'rejected'].includes(status)) throw new Error("invalid status");
+    
+    const request = await Request.findOne({ _id: requestId, toUserId: user._id, status: 'pending' });
+    if (!request) throw new Error("invalid request");
+    
+    request.status = status;
+    const updatedRequest = await request.save();
+    
+    if (status === 'accepted') {
+      // FIXED: Added 'const'
+      const conversation = await Conversation.create({ 
+        members: [user._id, request.fromUserId]
+      });
     }
-    catch(err){
-        res.status(400).send(err.message)
-    }
-})
+    
+    res.json({ message: "request successful", data: updatedRequest });
+  } catch (err) {
+    res.status(400).send(err.message);
+  }
+});
 
 
 module.exports=router

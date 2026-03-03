@@ -19,19 +19,19 @@ const server = http.createServer(app);
 
 
 
-app.use(cors({
-  origin: "http://localhost:5173",//allow this frontend
-  credentials: true               //takes the jwt from above frontend
-}));
+// app.use(cors({
+//   origin: "http://localhost:5173",//allow this frontend
+//   credentials: true               //takes the jwt from above frontend
+// }));
 
 //network
-// app.use(cors({
-//   origin: [
-//     "http://localhost:5173",
-//     "http://192.168.137.1:5173"  
-//   ],
-//   credentials: true
-// }));
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "http://192.168.137.1:5173"  
+  ],
+  credentials: true
+}));
 
 
 app.use(express.json())
@@ -136,12 +136,12 @@ connectDB()
     
     initSocket(server);
 
-    server.listen(7777, () => {
-      console.log("app is running on port 7777");
-    });
-    // server.listen(7777, "0.0.0.0",() => {
+    // server.listen(7777, () => {
     //   console.log("app is running on port 7777");
     // });
+    server.listen(7777, "0.0.0.0",() => {
+      console.log("app is running on port 7777");
+    });
   })
   .catch((err) => console.log(err));
 
