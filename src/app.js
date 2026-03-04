@@ -14,7 +14,7 @@ const chatRoute=require('./routes/chatRouter');
 const app=express();
 const http = require("http");
 const initSocket = require("./config/socket");
-
+require("dotenv").config();
 const server = http.createServer(app);
 
 
